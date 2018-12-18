@@ -1,14 +1,12 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <stack>
-#include <algorithm>
-#include "omp.h"
+#include <algorithm> // random_shuffle
+#include "omp.h" // openmp
 #include <stdlib.h>// rand
-#include <ctime>
+#include <ctime> // rand initialize
 #include <fstream>
-#include <sstream>
-#include <direct.h>
+#include <direct.h> // _mkdir
 using namespace std;
 
 #define BOT_PIECE 1
@@ -27,19 +25,14 @@ const short find_dir[8][2] = { { -1,-1 },{ 0,-1 },{ 1,-1 },
 { -1,0 },{ 1,0 },
 { -1,1 },{ 0,1 },{ 1,1 } };
 
-double get_range_rand(double rand_min, double rand_max) {
-	double range = rand_max - rand_min;
-	const int rand_split = 100000;
-	double rand_num = (double)(rand() % rand_split) / rand_split;
-	return (rand_min + range*rand_num);
-}
-
 template<typename T> int find_in_vector(vector<T> v, T f) {
 	for (int i = 0; i < v.size(); ++i)
 		if (v[i] == f) return i;
 	return -1;
 }
 
+// get structure according to id and mode(use to define places on board)
+// so as to calculate
 vector<int> get_indexes(int id, int mode) {
 	int begin_x = id % 5;
 	int begin_y = id / 5;
@@ -108,6 +101,8 @@ vector<int> get_indexes(int id, int mode) {
 	return result;
 }
 
+// different places' value
+// update in Board
 vector< vector<int> > var_lists;
 
 struct Board {
@@ -119,6 +114,7 @@ struct Board {
 	int total_times;
 	int search_depth;
 
+	// initial
 	Board(bool bot_first = false) {
 		alpha = SHRT_MIN;
 		beta = SHRT_MAX;
@@ -128,6 +124,7 @@ struct Board {
 		for (int i = 0; i < BOARD_SIZE*BOARD_SIZE; ++i) board[i] = EMPTY_PIECE;
 		short black = bot_first ? BOT_PIECE : PLAYER_PIECE;
 		short white = bot_first ? PLAYER_PIECE : BOT_PIECE;
+		// place
 		onboard(2, 2) = white;
 		onboard(3, 2) = white;
 		onboard(4, 2) = white;
@@ -158,10 +155,12 @@ struct Board {
 	void structvar_initial() {
 		bool need_rewrite = false;
 		for (int i = 0; i < 25; ++i) {
+			// add empty vector
 			if (var_lists.size() <= i){
 				var_lists.push_back(vector<int>());
 			}
 			var_lists[i].clear();
+			// read var from file
 			ifstream strvar_file;
 			string filename = "struct/";
 			filename += to_string(i);
@@ -176,6 +175,7 @@ struct Board {
 				strvar_file.close();
 			}
 			else {
+				// no such file: need to make file afterwards
 				strvar_file.close();
 				need_rewrite = true;
 				for (int j = 0; j < pow(3, 9); ++j) {
@@ -190,6 +190,7 @@ struct Board {
 	}
 	void struct_write() {
 		_mkdir("struct");
+		// output
 		for (int i = 0; i < 25; ++i) {
 			string filename = "struct/";
 			filename += to_string(i);
@@ -211,11 +212,18 @@ struct Board {
 		return board[y * BOARD_SIZE + x];
 	}
 	vector<int> next_possible() {
+		// results: dir * (BOARDSIZE^2) + index
+		// decode:
+		// dir = result / (BOARDSIZE^2)
+		// x = (result % BOARDSIZE^2) % BOARDSIZE
+		// y = (result % BOARDSIZE^2) / BOARDSIZE
 		vector<int> results;
 		for (int _y = 0; _y < BOARD_SIZE; ++_y) {
 			for (int _x = 0; _x < BOARD_SIZE; ++_x) {
 				int id = _y * BOARD_SIZE + _x;
+				// if self's piece
 				if (board[id] == (is_on_bot ? BOT_PIECE : PLAYER_PIECE)) {
+					// find dir that can move
 					for (int i = 0; i < 8; ++i) {
 						int nx = _x + find_dir[i][0];
 						int ny = _y + find_dir[i][1];
@@ -281,13 +289,15 @@ struct Board {
 		short self_piece = (is_on_bot) ? BOT_PIECE : PLAYER_PIECE;
 		short enemy_piece = (is_on_bot) ? PLAYER_PIECE : BOT_PIECE;
 		int old_id = step_where % (BOARD_SIZE * BOARD_SIZE);
+		// decode
 		int dir = step_where / (BOARD_SIZE * BOARD_SIZE);
 		int nx = (old_id % BOARD_SIZE) + find_dir[dir][0];
 		int ny = (old_id / BOARD_SIZE) + find_dir[dir][1];
+		// move
 		int new_id = ny * BOARD_SIZE + nx;
 		board[old_id] = 0;
 		board[new_id] = self_piece;
-		// pick
+		// squeeze
 		for (int i = 0; i < 8; ++i) {
 			int _x1 = nx + find_dir[i][0];
 			int _y1 = ny + find_dir[i][1];
@@ -301,6 +311,7 @@ struct Board {
 				onboard(_x1, _y1) = self_piece;
 			}
 		}
+		// pick
 		for (int i = 0; i < 4; ++i) {
 			int _x1 = nx + find_dir[i][0];
 			int _y1 = ny + find_dir[i][1];
@@ -319,8 +330,8 @@ struct Board {
 		total_times++;
 		
 	}
-	short bot_on_idel_step(bool debug = true, int depth = 0, bool random_move = false) {
-		// whether use end search?
+	short bot_on_ideal_step(bool debug = true, int depth = 0, bool random_move = false) {
+		// which search?
 		if (depth != 0) {
 			search_depth = depth;
 		}
@@ -339,6 +350,7 @@ struct Board {
 		alpha = DBL_MIN;
 		beta = DBL_MAX;
 		vector<int> next_steps = next_possible();
+		// get move
 		pair<int, double> expection = get_self_value(random_move);
 		short next_step_id = expection.first;
 		if (debug) {
@@ -350,11 +362,12 @@ struct Board {
 		new_step(next_step_id);
 		return next_step_id;
 	}
-	// <from which children(index of vector), value>
+	// <move step, value>
 	pair<int, double> get_self_value(bool random_move = false) {
 		double value = 0;
 		vector<int> next_steps = next_possible();
 		pair<int, double> result(-1, 0);
+		// no place to move
 		if (next_steps.size() == 0) {
 			return pair<int, double>(-1, (is_on_bot ? -FINAL_POWER : FINAL_POWER));
 		}
@@ -365,7 +378,7 @@ struct Board {
 			}
 			return pair<int, double>(-1, (value<=0 ? -FINAL_POWER : FINAL_POWER));
 		}
-		// to bottom
+		// to search bottom
 		if (search_depth == 0) {
 			double value;
 			value = calculate_sturct();
@@ -405,6 +418,7 @@ struct Board {
 		return result;
 	}
 	double calculate_sturct() {
+		// end calculate
 		if (total_times >= 120) {
 			int value = 0;
 			for (int i = 0; i < BOARD_SIZE*BOARD_SIZE; ++i) {
@@ -413,6 +427,8 @@ struct Board {
 			return value;
 		}
 		int result = 0;
+		// calculate according to each structure
+		// use OpenMP to parallelize
 #pragma omp parallel for
 		for (int i = 0; i < 25; ++i) {
 			int _result = 0;
@@ -430,6 +446,7 @@ struct Board {
 		}
 		return result;
 	}
+	// reverse all the piece
 	void all_reverse() {
 		for (int i = 0; i < BOARD_SIZE*BOARD_SIZE; ++i) {
 			if (board[i] == BOT_PIECE) board[i] = PLAYER_PIECE;
@@ -479,22 +496,6 @@ int pvc() {
 		cin >> depth;
 		string your = (mode) ? "(白子○)" : "(黑子●)";
 		Board* current = new Board(mode == 1);
-		bool use_monte = false;
-		int _ip = -1;
-		while (_ip == -1) {
-			cout << "请选择评估方式(0=全局, 1=模块):";
-			cin >> _ip;
-			if (_ip < 0 || _ip > 1) {
-				cout << "Illegal input!" << endl;
-				if (cin.fail()) {
-					cin.sync();
-					cin.clear();
-					cin.ignore();
-				}
-				_ip = -1;
-			}
-		}
-		use_monte = _ip == 1;
 		vector<Board*> board_records;
 		while (true) {
 			cout << endl;
@@ -508,7 +509,7 @@ int pvc() {
 			current->calculate_sturct();
 			if (current->is_on_bot) {
 				cout << "电脑思考中..." << endl;
-				short this_record = current->bot_on_idel_step(true, depth, true);
+				short this_record = current->bot_on_ideal_step(true, depth, true);
 			}
 			else {
 				bool rollback = false;
@@ -526,11 +527,13 @@ int pvc() {
 						}
 						rollback = true;
 					}
+					// oversize
 					if (_x < 0 || _x >= BOARD_SIZE || _y < 0 || _y >= BOARD_SIZE) {
 						cout << "Illgeal!" << endl;
 						continue;
 					}
 					else {
+						// legal check
 						decision = _dir * (BOARD_SIZE * BOARD_SIZE) + (_y * BOARD_SIZE + _x);
 						if (find_in_vector(list, decision) == -1) {
 							cout << "Illgeal!" << endl;
@@ -546,20 +549,26 @@ int pvc() {
 					board_records.pop_back();
 				}
 				else {
+					// record
 					Board* b_copy = new Board(current);
 					board_records.push_back(b_copy);
+					// move
 					current->new_step(decision);
 				}
 			}
 		}
+		// calculate
 		double value = current->get_self_value(false).second;
 		cout << "你的最终得分：" << -value / FINAL_POWER << endl;
+
+		// learn according to the record
 		int isbotwin = value < 0 ? 1 : -1;
 		for (int i = 0; i < board_records.size(); ++i) {
 			current->update_struct(isbotwin, board_records[i]);
 			delete board_records[i];
 		}
 		current->struct_write();
+
 		cout << endl;
 		mode = -1;
 		while (mode == -1) {
@@ -587,6 +596,7 @@ int struct_train(bool debug = true) {
 	cout << "请输入查找深度：";
 	cin >> depth;
 	while (times++<10000) {
+		// record
 		vector<Board*> records;
 		Board* run_board = new Board(true);
 		while (true) {
@@ -602,13 +612,13 @@ int struct_train(bool debug = true) {
 			if (current_steps.size() == 0 || run_board->total_times >= 120) {
 				break;
 			}
-			run_board->bot_on_idel_step(debug, depth, true);
+			run_board->bot_on_ideal_step(debug, depth, true);
 			run_board->all_reverse();
 			run_board->is_bot_first = !run_board->is_bot_first;
 			run_board->is_on_bot = !run_board->is_on_bot;
 		}
-		// true=white, false=black
 		double value = run_board->get_self_value(false).second;
+		// true=white, false=black
 		bool winner = (run_board->is_bot_first ^ (value > 0));
 		for (int i = 0; i < records.size(); ++i) {
 			Board* record = records[i];
