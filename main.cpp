@@ -424,7 +424,7 @@ struct Board {
 			for (int i = 0; i < BOARD_SIZE*BOARD_SIZE; ++i) {
 				value += board[i];
 			}
-			return value;
+			return value * FINAL_POWER;
 		}
 		int result = 0;
 		// calculate according to each structure
