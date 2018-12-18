@@ -20,15 +20,9 @@ using namespace std;
 
 #define SEARCH_MAX_DEPTH 3 // search depth
 #define SEARCH_MAX_DEPTH_END 5 // search depth while at end
-#define MOVE_INITIAL_POWER 5 // move power at first(cut down as more pieces on board)
-#define MOVE_DIFF_POWER 2 // power makes by move possibility's difference
-
-#define IMPORTANT_POWER 3
 
 const vector<string> full_alpha_list = { "£°", "£±", "£²", "£³", "£´", "£µ", "£¶",
-"£·", "£¸", "£¹", "¢Î", "¢Ï", "¢Ð",
-"£Ï", "£Ð", "£Ñ", "£Ò", "£Ó", "£Ô", "£Õ",
-"£Ö", "£×", "£Ø", "£Ù", "£Ú" };
+"£·", "£¸", "£¹", "¢Î", "¢Ï", "¢Ð"};
 const short find_dir[8][2] = { { -1,-1 },{ 0,-1 },{ 1,-1 },
 { -1,0 },{ 1,0 },
 { -1,1 },{ 0,1 },{ 1,1 } };
