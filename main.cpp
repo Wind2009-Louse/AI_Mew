@@ -526,6 +526,7 @@ int pvc() {
 							continue;
 						}
 						rollback = true;
+						break;
 					}
 					// oversize
 					if (_x < 0 || _x >= BOARD_SIZE || _y < 0 || _y >= BOARD_SIZE) {
